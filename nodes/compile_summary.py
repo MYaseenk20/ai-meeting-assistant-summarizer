@@ -12,7 +12,11 @@ def compile_summary(state: MeetingState) -> MeetingState:
     Node 6 — Write a 2-3 sentence executive summary using all extracted data.
     Runs after all extraction nodes have populated the state.
     """
-
+    print("DEBUG state keys with data:")
+    print("  metadata:    ", state.get("meeting_meta"))
+    print("  action_items:", state.get("action_items"))
+    print("  decisions:   ", state.get("decisions"))
+    print("  follow_ups:  ", state.get("follow_ups"))
     meeting_meta = state.get("meeting_meta")
     action_items = state.get("action_items", [])
     decisions    = state.get("decisions", [])
@@ -21,10 +25,10 @@ def compile_summary(state: MeetingState) -> MeetingState:
     # ── format each section for the prompt ──────────────────────────────────
 
     meta_block = f"""
-    - Type:         {meeting_meta.get("meeting_type", "Unknown")}
-    - Date:         {meeting_meta.get("date", "Unknown")}
-    - Duration:     {meeting_meta.get("duration_estimate", "Unknown")}
-    - Participants: {", ".join(meeting_meta.get("participants", [])) or "Unknown"}
+    - Type:         {meeting_meta.meeting_type or "Unknown"}
+    - Date:         {meeting_meta.date or "Unknown"}
+    - Duration:     {meeting_meta.duration_estimate or "Unknown"}
+    - Participants: {", ".join(meeting_meta.participants) or "Unknown"}
     """ if meeting_meta else "Not available."
 
     action_block = "\n".join(
@@ -35,7 +39,7 @@ def compile_summary(state: MeetingState) -> MeetingState:
     decision_block = "\n".join(f"  - {d}" for d in decisions) or "None identified."
     follow_up_block = "\n".join(f"  - {f}" for f in follow_ups) or "None identified."
 
-    prompt = """
+    prompt = f"""
     You are an executive assistant writing a post-meeting briefing.
     Using the structured data below, write a 2-3 sentence executive summary.
 
@@ -48,39 +52,37 @@ def compile_summary(state: MeetingState) -> MeetingState:
     - Do not invent details not present in the structured data.
 
     ── Meeting Metadata ──
-    {meta}
+    {meta_block}
 
     ── Decisions ──
-    {decisions}
+    {decision_block}
 
     ── Action Items ──
-    {action_items}
+    {action_block}
 
     ── Follow-ups ──
-    {follow_ups}
+    {follow_up_block}
     """
 
-    messages = [
-        SystemMessage(content=prompt.format(
-            meta=meta_block,
-            decisions=decision_block,
-            action_items=action_block,
-            follow_ups=follow_up_block,
-        ))
-    ]
+    # messages = [
+    #     SystemMessage(content=prompt.format(
+    #         meta=meta_block,
+    #         decisions=decision_block,
+    #         action_items=action_block,
+    #         follow_ups=follow_up_block,
+    #     ))
+    # ]
 
     try:
-        response = llm.invoke(messages)
+        response = llm.invoke(prompt)
         summary = response.content.strip()
 
     except Exception as e:
         return {
-            **state,
             "summary": None,
             "errors": [f"compile_summary failed: {str(e)}"],
         }
 
     return {
-        **state,
         "summary": summary,
     }

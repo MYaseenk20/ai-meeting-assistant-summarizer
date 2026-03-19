@@ -10,19 +10,18 @@ def extract_decisions(state: MeetingState) -> MeetingState:
     Decisions are final, agreed-upon conclusions — not action items or suggestions.
     """
 
-    prompt = """
-    You are a meeting analyst. Your task is to extract every *decision* made during 
-    this meeting — conclusions that were explicitly agreed upon, approved, or resolved 
-    by the participants.
+    prompt = f"""
+    You are a meeting analyst. Extract every *decision* made during this meeting —
+    conclusions that were explicitly agreed upon, approved, or resolved by participants.
 
-    A decision is:
+    A decision IS:
     - A final, agreed-upon conclusion: "We decided to go with vendor X"
     - An approval or rejection: "The proposal was approved", "We're dropping feature Y"
     - A resolution to a debate: "We aligned on Q3 as the target date"
     - A policy or direction change: "Going forward, all PRs require two reviewers"
 
     A decision is NOT:
-    - An action item (something someone will do) — those are captured elsewhere
+    - An action item (something someone will do) — captured elsewhere
     - A suggestion or idea that was not agreed upon
     - An open question or unresolved debate
     - General discussion or background context
@@ -31,24 +30,14 @@ def extract_decisions(state: MeetingState) -> MeetingState:
     - Good: "The team decided to migrate from REST to GraphQL by Q2."
     - Bad:  "GraphQL was discussed."
 
-    Return a JSON object in this exact shape:
-    {{
-        "decisions": [
-            "Decision one as a full sentence.",
-            "Decision two as a full sentence.",
-            ...
-        ]
-    }}
-
-    If no decisions were made, return: {{ "decisions": [] }}
+    If no decisions were made, return an empty list.
 
     Transcript:
-    {transcript}
+    {state["raw_transcript"]}
     """
-
-    messages = [
-        SystemMessage(content=prompt.format(transcript=state["raw_transcript"]))
-    ]
+    # messages = [
+    #     SystemMessage(content=prompt.format(transcript=state["raw_transcript"]))
+    # ]
 
     try:
         from typing import TypedDict, List
@@ -57,17 +46,15 @@ def extract_decisions(state: MeetingState) -> MeetingState:
             decisions: List[str]
 
         structured_llm = llm.with_structured_output(DecisionList)
-        result: DecisionList = structured_llm.invoke(messages)
+        result: DecisionList = structured_llm.invoke(prompt)
         decisions = result.get("decisions", [])
 
     except Exception as e:
         return {
-            **state,
             "decisions": [],
             "errors": [f"extract_decisions failed: {str(e)}"],
         }
 
     return {
-        **state,
         "decisions": decisions,
     }
