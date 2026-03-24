@@ -20,3 +20,7 @@ class MeetingState(TypedDict):
     # ── output ──
     final_output: Optional[str]
     errors: Annotated[List[str], operator.add]
+    user_question: str | None
+    pinecone_index: str | None      # just the index name string
+    pinecone_namespace: str | None  # thread_id used as namespace
+    chat_history: list[dict]

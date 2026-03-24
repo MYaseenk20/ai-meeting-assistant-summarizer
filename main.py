@@ -407,7 +407,12 @@ if run_btn and transcript_text:
     # ── Metadata ────────────────────────────────────────────────────────────
     meta = result.get("meeting_meta") or {}
     if meta:
-        parts  = meta.get("participants") or []
+        if hasattr(meta, "model_dump"):
+            meta = meta.model_dump()  # Pydantic v2
+        elif hasattr(meta, "dict"):
+            meta = meta.dict()  # Pydantic v1
+
+        parts = meta.get("participants", [])  # ← fixed line
         badges = "".join([
             f'<span class="meta-badge"><strong>Title</strong>{meta.get("title","—")}</span>',
             f'<span class="meta-badge"><strong>Date</strong>{meta.get("date","—")}</span>',
