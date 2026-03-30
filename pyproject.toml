@@ -6,9 +6,12 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "dotenv>=0.9.9",
+    "fastapi>=0.135.2",
     "langchain>=1.2.12",
     "langchain-community>=0.4.1",
     "langchain-google-genai>=4.2.1",
     "langchain-pinecone>=0.2.13",
     "langgraph>=1.1.2",
+    "sqlalchemy>=2.0.48",
+    "unicorn[standard]>=2.1.4",
 ]

@@ -104,4 +104,4 @@ if __name__ == "__main__":
 
             # ✅ resume from checkpoint — None means "continue from where you left off"
         result = graph.invoke(None, config=config)
-    print(f"Assistant: {result['chat_history'][-1]['content']}\n")
+        print(f"Assistant: {result['chat_history'][-1]["content"]}\n")
