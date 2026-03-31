@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime
 
 from fastapi import APIRouter, UploadFile, File,HTTPException
 from langgraph.checkpoint.memory import MemorySaver
@@ -14,6 +15,8 @@ router = APIRouter(
 memory = MemorySaver()
 
 graph = build_graph().compile(checkpointer=memory)
+
+sessions: dict[str, dict] = {}
 
 @router.post("/summarize",)
 async def transcript_summarize(file:UploadFile = File(...)):
@@ -51,6 +54,12 @@ async def transcript_summarize(file:UploadFile = File(...)):
     config = {"configurable":{"thread_id":thread_id}}
 
     result = graph.invoke(initial_state, config=config)
+
+    sessions[thread_id] = {
+        "thread_id": thread_id,
+        "filename": file.filename,
+        "created_at": datetime.utcnow().isoformat(),
+    }
 
     return {"thread_id":thread_id,"summary":result["summary"]}
 
@@ -112,5 +121,9 @@ async def get_summary_by_id(thread_id:str):
     }
 
 
+@router.get("/get_all_thread_id")
 async def get_all_thread_id():
-    pass
+    if not sessions:
+        raise HTTPException(status_code=404, detail="No sessions found")
+
+    return {"sessions": list(sessions.values())}
