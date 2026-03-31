@@ -15,6 +15,11 @@ from nodes.should_chat import should_chat
 from rag.ingestion import ingestion
 from state.MeetingState import MeetingState
 
+def route_entry(state: MeetingState) -> str:
+    """Route to chat directly if this is a chat resumption, else run full pipeline."""
+    if state.get("user_question"):
+        return "chat"
+    return "ingest"
 
 def build_graph() -> StateGraph:
     builder = StateGraph(MeetingState)
@@ -27,8 +32,13 @@ def build_graph() -> StateGraph:
     builder.add_node("index_document", ingestion)
     builder.add_node("rag_chat", rag_chat)
 
-    builder.set_entry_point("ingest_transcript")
-
+    builder.set_conditional_entry_point(
+        route_entry,  # NEW routing function (see below)
+        {
+            "ingest": "ingest_transcript",
+            "chat": "rag_chat",
+        }
+    )
     # 🔥 FAN-OUT (Parallel starts here)
     builder.add_edge("ingest_transcript", "extract_metadata")
     builder.add_edge("ingest_transcript", "extract_action_items")
