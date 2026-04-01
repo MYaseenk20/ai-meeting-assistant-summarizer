@@ -53,7 +53,11 @@ async def transcript_summarize(file:UploadFile = File(...)):
 
     config = {"configurable":{"thread_id":thread_id}}
 
-    result = graph.invoke(initial_state, config=config)
+    try:
+        result = graph.invoke(initial_state, config=config)
+    except Exception as e:
+        raise HTTPException(status_code=500,detail=f"Graph execution failed: {str(e)}")
+
 
     sessions[thread_id] = {
         "thread_id": thread_id,
@@ -76,11 +80,13 @@ async def chat_transcript(question:str,thread_id:str):
     # if not state or not state.values:
     #     raise HTTPException(status_code=404, detail="Session not found")
 
-
-    result = graph.invoke(None,config=config)
+    try:
+        result = graph.invoke(None,config=config)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Graph execution failed: {str(e)}")
 
     return {
-        result['chat_history'][-1]["content"]
+       "answer" :result['chat_history'][-1]["content"]
     }
 
 @router.get("/get_all_chat")
@@ -119,7 +125,6 @@ async def get_summary_by_id(thread_id:str):
         "decisions": state.values.get("decisions", []),
         "follow_ups": state.values.get("follow_ups", []),
     }
-
 
 @router.get("/get_all_thread_id")
 async def get_all_thread_id():
