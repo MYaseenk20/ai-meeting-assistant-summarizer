@@ -1,9 +1,10 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, UploadFile, File,HTTPException
 from langgraph.checkpoint.memory import MemorySaver
 
+from api.model import ChatRequest, SummarizeResponse
 from graph import build_graph
 from state.MeetingState import MeetingState
 
@@ -18,13 +19,16 @@ graph = build_graph().compile(checkpointer=memory)
 
 sessions: dict[str, dict] = {}
 
-@router.post("/summarize",)
+@router.post("/summarize",response_model=SummarizeResponse)
 async def transcript_summarize(file:UploadFile = File(...)):
 
     if not file.filename.endswith(".txt"):
         raise HTTPException(status_code=400, detail="Only .txt files are supported")
 
+    MAX_SIZE = 5 * 1024 * 1024  # 5MB
     content = await file.read()
+    if len(content) > MAX_SIZE:
+        raise HTTPException(status_code=413, detail="File too large (max 5MB)")
     try:
         raw_transcript = content.decode("utf-8")
     except UnicodeDecodeError:
@@ -62,19 +66,19 @@ async def transcript_summarize(file:UploadFile = File(...)):
     sessions[thread_id] = {
         "thread_id": thread_id,
         "filename": file.filename,
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at":    datetime.now(timezone.utc).isoformat(),
     }
 
     return {"thread_id":thread_id,"summary":result["summary"]}
 
 @router.get("/chat_transcript")
-async def chat_transcript(question:str,thread_id:str):
+async def chat_transcript(body:ChatRequest):
 
-    config = {"configurable":{"thread_id":thread_id}}
+    config = {"configurable":{"thread_id":body.thread_id}}
 
     graph.update_state(
         config,
-        {"user_question": question},
+        {"user_question": body.question},
     )
 
     # if not state or not state.values:
